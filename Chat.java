@@ -53,7 +53,7 @@ public class Chat {
         IvParameterSpec ivparam = null;
         try{
             cip = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            System.out.println(cip.getAlgorithm());
+            //System.out.println(cip.getAlgorithm());
 
             // System.out.println(cip.getProvider().toString());
 
@@ -62,7 +62,7 @@ public class Chat {
         byte[] testKey = {(byte)0, (byte)1, (byte)0, (byte)4, (byte)8, (byte) 5, (byte) 9, (byte)3, (byte)7, (byte)6, (byte)8, (byte)1, (byte)6, (byte)1, (byte)6, (byte)5};
         SecretKey key = new SecretKeySpec(testKey, "DH");
         
-        System.out.println("Args: " + args) ;
+        //System.out.println("Args: " + args) ;
         parseArgs(new ArrayDeque<String>(Arrays.asList(args)));
         Socket c = null;
         InputStream in = null;
@@ -131,7 +131,6 @@ public class Chat {
 
             try {
                 byte[] modeB = new byte[1024];
-                System.out.println("about to receive DH parameters.");
                 int len = in.read(modeB);
                 byte[] par = new byte[len];
                 System.arraycopy(modeB,0,par,0,len);
@@ -148,7 +147,7 @@ public class Chat {
                         if (len != -1)
                             break;
                     }
-                    System.out.println("received iv");
+                    System.out.println("Received iv");
                     ivparam = new IvParameterSpec(iv);
                 }
 
@@ -166,8 +165,9 @@ public class Chat {
         }
         try {
             System.out.println("Initializaton done. You can begin chatting.");
+            System.out.println("-----------------------------------------");
             new Thread(new ChatSender(System.in, c.getOutputStream(),key, ivparam)).start();
-            new Thread(new ChatReceiver(c.getInputStream(), System.out,key, ivparam)).start();
+            new Thread(new ChatReceiver(c.getInputStream(), System.out,key, ivparam, mode)).start();
         } catch (IOException e) {
             System.err.println("There was an error setting up data transfer:");
             System.err.println(e);
@@ -203,7 +203,6 @@ public class Chat {
                 // cipherDecrypt.doFinal(senderPubKey, 0, 128);
             }
             System.out.println("Received public key: ");
-            System.out.println(senderPubKey);
 
             // convert sender's byte array public key to a PublicKey
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -265,7 +264,6 @@ public class Chat {
                 // cipherDecrypt.doFinal(senderPubKey, 0, 128);
             }
             System.out.println("Received public key: ");
-            System.out.println(senderPubKey);
 
             // convert sender's byte array public key to a PublicKey
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -388,10 +386,9 @@ class ChatSender implements Runnable {
         this.conn = new PrintStream(conn);
         SecureRandom rand = new SecureRandom();
         rand.setSeed(rand.generateSeed(10));
-        System.out.println("about to initialize ciphers");
         try {
             cipherEncrypt = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            System.out.println(cipherEncrypt.getProvider().toString());
+            //System.out.println(cipherEncrypt.getProvider().toString());
             //Security.removeProvider("CSec2019");
             //sunCipher = Cipher.getInstance("AES/CBC/PKCS5Padding"); // for testing
             //System.out.println(sunCipher.getProvider().toString());
@@ -410,7 +407,8 @@ class ChatSender implements Runnable {
         } catch(InvalidAlgorithmParameterException e) {
             System.err.println("Invalid Algorithm Parameter: " + e);
         }
-        System.out.println("initialized ciphers");
+        //System.out.println("Initialized ciphers. You can start chatting.");
+        //System.out.println("-------------------------------------");
     }
     public void run() {
         while (true) {
@@ -441,13 +439,12 @@ class ChatSender implements Runnable {
 }
 
 class ChatReceiver implements Runnable {
-    public ChatReceiver(InputStream conn, OutputStream screen, SecretKey sKey, IvParameterSpec param) {
+    public ChatReceiver(InputStream conn, OutputStream screen, SecretKey sKey, IvParameterSpec param, byte mode) {
         this.conn = conn;
         this.screen = screen;
+        this.mode = mode;
         SecureRandom rand = new SecureRandom();
         rand.setSeed(rand.generateSeed(10));
-        System.out.println("about to initialize ciphers");
-        System.out.println(sKey.getEncoded().length);
         try {
             cipherDecrypt = Cipher.getInstance("AES/CBC/PKCS5Padding");
             //cipherDecrypt.init(Cipher.DECRYPT_MODE,sKey, param, rand);
@@ -463,12 +460,18 @@ class ChatReceiver implements Runnable {
         } catch(InvalidAlgorithmParameterException e) {
             System.err.println("Invalid Algorithm Parameter: " + e);
         }
-        System.out.println("initialized ciphers");
+        //System.out.println("Initialized ciphers. You can start chatting.");
+        //System.out.println("-------------------------------------");
     }
     public void run() {
         byte[] b = new byte[1024];
         byte[] decrypted = new byte[1024];
         while (true) {
+            String text;
+            if(mode == SERVER)
+                text = "[client] ";
+            else
+                text = "[server] ";
             try {
                 int len = conn.read(b);
                 if (len == -1) break;
@@ -476,12 +479,13 @@ class ChatReceiver implements Runnable {
                     //System.out.print("Decrypting this message");
                     //System.out.println(new String(b));
                     decrypted = cipherDecrypt.doFinal(b, 0, len);
+                    text += new String(decrypted);
                 } catch (IllegalBlockSizeException e) {
                     System.err.println(e);
                 } catch (BadPaddingException e) {
                     System.err.println(e);
                 }
-                screen.write(decrypted, 0, decrypted.length);
+                screen.write(text.getBytes(), 0, text.getBytes().length);
                 screen.write(10);
                 //System.out.println(new String(decrypted));
                 //screen.write(decrypted, 0, len);
@@ -495,4 +499,7 @@ class ChatReceiver implements Runnable {
     private InputStream conn;
     private OutputStream screen;
     private Cipher cipherDecrypt;
+    private static final byte SERVER = 1;
+    private static final byte CLIENT = 2;
+    private byte mode;
 }
