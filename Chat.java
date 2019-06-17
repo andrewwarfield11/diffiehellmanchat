@@ -97,7 +97,6 @@ public class Chat {
                 key = keyExchangeServer(in,out);
 
                 // generate iv and send to client
-                System.out.println(params.getAlgorithm().toString());
                 if(cip.getAlgorithm().toString().contains("CBC")) {
                     rand = new SecureRandom();
                     rand.nextBytes(iv);
@@ -200,7 +199,6 @@ public class Chat {
                     keyRecieved = true;
                     System.out.println("Key is read");
                 }
-                // cipherDecrypt.doFinal(senderPubKey, 0, 128);
             }
             System.out.println("Received public key: ");
 
@@ -261,7 +259,6 @@ public class Chat {
                     keyRecieved = true;
                     System.out.println("Key is read");
                 }
-                // cipherDecrypt.doFinal(senderPubKey, 0, 128);
             }
             System.out.println("Received public key: ");
 
@@ -273,7 +270,6 @@ public class Chat {
             // use KeyAgreement, own private key, and received public key to generate secret key
             KeyAgreement agr = KeyAgreement.getInstance("DH");
             agr.init(pri);
-            // 
             agr.doPhase(senderPub, true);
             byte[] secretKey = agr.generateSecret();
             byte[] secretKey16 = new byte[16];
