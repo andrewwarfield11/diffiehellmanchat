@@ -94,7 +94,7 @@ public class Chat {
                 out.write(params.getEncoded());
 
                 // perform key exchange
-                key = keyExchangeServer(in,out);
+                key = keyExchange(in,out);
 
                 // generate iv and send to client
                 if(cip.getAlgorithm().toString().contains("CBC")) {
@@ -137,7 +137,7 @@ public class Chat {
                 params.init(par);
                 System.out.println("Received DH parameters.");
 
-                key = keyExchangeClient(in,out);
+                key = keyExchange(in,out);
 
                 if(cip.getAlgorithm().toString().contains("CBC")) {
                     // receive iv
@@ -173,66 +173,8 @@ public class Chat {
             System.exit(-3);
         }
     }
-    private static SecretKey keyExchangeServer(InputStream in, OutputStream out) {
-        try {
-            KeyPairGenerator keygen = KeyPairGenerator.getInstance("DH");
-            keygen.initialize(1024); // key size is 1024 bits/128 bytes
-            // use the KeyPairGenerator to generate own public and private keys
-            System.out.println("Generating public and private keys");
-            KeyPair key1 = keygen.generateKeyPair();
-            PublicKey pub = key1.getPublic();
-            PrivateKey pri = key1.getPrivate();
 
-            // send public key
-            out.write(pub.getEncoded());
-            System.out.println("Sending public key");
-
-            // recieve sneder's public key as byte array
-            System.out.println("Attempting to receive key");
-            boolean keyRecieved = false;
-            byte[] senderPubKey = new byte[1024];
-            while (!keyRecieved) {
-                int keylen = in.read(senderPubKey);
-                System.out.println("Reading key....");
-
-                if (keylen > 0) {
-                    keyRecieved = true;
-                    System.out.println("Key is read");
-                }
-            }
-            System.out.println("Received public key: ");
-
-            // convert sender's byte array public key to a PublicKey
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            KeyFactory keyFac = KeyFactory.getInstance("DH");
-            PublicKey senderPub = keyFac.generatePublic(new X509EncodedKeySpec(senderPubKey));
-
-            // use KeyAgreement, own private key, and received public key to generate secret key
-            KeyAgreement agr = KeyAgreement.getInstance("DH");
-            agr.init(pri);
-            agr.doPhase(senderPub, true);
-            byte[] secretKey = agr.generateSecret();
-            byte[] secretKey16 = new byte[16];
-            System.arraycopy(secretKey,0,secretKey16,0,16);
-            System.out.println("Generated secret key");
-            return new SecretKeySpec(secretKey16, "DH");
-        } catch(IOException e) {
-            System.err.println("There was an error sending or receiving data: " + e);
-        } catch (NoSuchAlgorithmException e) {
-            System.err.println("No such Algorithm: " + e);
-        } catch (InvalidKeyException e) {
-            System.err.println(e);
-        } catch (InvalidKeySpecException e) {
-            System.err.println(e);
-        } catch(NoSuchPaddingException e) {
-            System.err.println(e);
-        } catch(Exception e) {
-            System.err.println(e);
-        }
-        // if an error was found
-        return null;
-    }
-    private static SecretKey keyExchangeClient(InputStream in, OutputStream out) {
+    private static SecretKey keyExchange(InputStream in, OutputStream out) {
         try {
 
             KeyPairGenerator keygen = KeyPairGenerator.getInstance("DH");
